@@ -4,6 +4,7 @@ import json
 from datetime import datetime
 from dotenv import load_dotenv
 import os
+import time
 
 ENV_PATH = os.path.join(os.path.dirname(__file__), "../.env")
 
@@ -12,7 +13,7 @@ load_dotenv(ENV_PATH)
 # Config
 ALPHA_VANTAGE_KEY = os.getenv("ALPHAVANTAGE_API_KEY")
 AWS_BUCKET = os.getenv("AWS_BUCKET")
-SYMBOL = "AAPL"
+SYMBOL = ["AAPL", "MSFT", "GOOGL", "JPM", "TSLA"]
 
 def fetch_stock_data(symbol):
     url = "https://www.alphavantage.co/query"
@@ -47,12 +48,19 @@ def land_to_s3(data, symbol):
     return key
 
 def main():
-    print(f"Fetching {SYMBOL}...")
-    data = fetch_stock_data(SYMBOL)
-    print(f"Got {len(data['Time Series (Daily)'])} days of data")
-    key = land_to_s3(data, SYMBOL)
-    print(f"Done. Raw response preview:")
-    
+    for symbol in SYMBOL:
+        print(f"Fetching {symbol}...")
+        try:
+            data = fetch_stock_data(symbol)
+            print(f"Got {len(data['Time Series (Daily)'])} days of data")
+            land_to_s3(data, symbol)
+        except ValueError as e:
+            print(f"Skipping {symbol} due to error: {e}")
+            continue
+
+        time.sleep(12)
+        
+    print("\nAll symbols processed.")
     # Print first 3 days so you can see the schema
     days = list(data["Time Series (Daily)"].items())[:3]
     for date, values in days:
